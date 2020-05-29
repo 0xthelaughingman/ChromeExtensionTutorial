@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<script>
+function animate_canvas()
+{
+    var canvas_cont = document.querySelector("#canvas");
+    var vid =  document.querySelector("#vid");
+    let x = 0;
+    const ctx = canvas_cont.getContext('2d');
+    draw();
+    startStream();
+
+
+    function startStream() {
+    // grab our MediaStream
+    const stream = canvas_cont.captureStream(30);
+    // feed the <video>
+    vid.srcObject = stream;
+    vid.play();
+    }
+    function draw() {
+    x = (x + 1) % (canvas_cont.width + 50);
+    ctx.fillStyle = 'white';
+    ctx.fillRect(0,0,canvas_cont.width,canvas_cont.height);
+    ctx.fillStyle = 'red';
+    ctx.beginPath();
+    ctx.arc(x - 25, 75, 25, 0, Math.PI*2);
+    ctx.fill();
+    requestAnimationFrame(draw);
+    }
+}
+</script>
+<style>
+#container {
+    margin: 0px auto;
+    width: 500px;
+    height: 375px;
+    border: 10px #333 solid;
+}
+#videoElement {
+    width: 500px;
+    height: 375px;
+    background-color: #666;
+}
+
+</style>
+</head>
+ 
+<body>
+<div id="container">
+	<video autoplay="true" id="vid">
+	
+	</video>
+</div>
+<div id="container">
+<canvas id="canvas">75</canvas>
+</div>
+<div>
+    <button onclick="animate_canvas()"></button>
+</div>
+</body>

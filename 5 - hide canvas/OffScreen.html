@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Display Webcam Stream</title>
+<script>
+
+var imageCapture;
+var original_stream;
+
+//All these dimensions will have to be dynamic, given the Webcam/Device's supported output Resolution.
+var invisible_canvas = document.createElement('CANVAS');
+invisible_canvas.id = "invisible";
+invisible_canvas.height = 375;
+invisible_canvas.width = 500;
+invisible_canvas.style.position= "absolute";
+invisible_canvas.style.top = "-500";
+
+var wrap_div = document.createElement("div");
+wrap_div.id = "wrap_div";
+wrap_div.style.position= "relative";
+wrap_div.style.right = "0";
+wrap_div.style.bottom = "0px";
+wrap_div.style.width= "0";
+wrap_div.style.overflow= "hidden";
+wrap_div.appendChild(invisible_canvas);
+
+var test_div = document.createElement("div");
+test_div.innerHTML="TEST";
+
+function override_getUserMedia()
+{
+    let originalMediaDevicesGetUserMedia = navigator.mediaDevices.getUserMedia;
+
+    navigator.mediaDevices.getUserMedia = function getUserMedia(constraints) { 
+    return new Promise((resolve, reject) => {
+        console.log("Taking over the implementation!")
+        originalMediaDevicesGetUserMedia.bind(navigator.mediaDevices)(constraints)
+        .then(stream => resolve(get_canvas_stream(stream))) //this is where we'd divert the stream to a call that modifies it, before resolving the promise
+        .catch(reject);
+    });
+    }
+}
+function get_canvas_stream(stream)
+{   
+    //set original_stream
+    original_stream = stream;
+    document.body.appendChild(wrap_div);
+    document.body.appendChild(test_div);
+    // grab our Canvas' stream
+    //var canvas_cont = document.querySelector("#canvas");
+    var canvas = document.getElementById("invisible");
+    const stream_new = canvas.captureStream(30);
+    nextFrame();
+    // feed the stream from the canvas
+    return stream_new;
+}
+
+//FrameLooper
+function nextFrame() {
+    var track = original_stream.getVideoTracks()[0];
+    imageCapture = new ImageCapture(track);
+    if ((imageCapture.track.readyState == 'live' ))
+    {
+        imageCapture.grabFrame()
+        .then(imageBitmap => {
+            //const canvas = document.querySelector('#canvas');
+            var canvas = document.getElementById("invisible");
+            drawCanvas(canvas, imageBitmap);
+        }).catch(error => console.log(error));
+    }
+    else
+    {
+        console.log(imageCapture.track.readyState)
+    }
+    requestAnimationFrame(nextFrame)
+}
+
+function drawCanvas(canvas, img) {
+  canvas.width = getComputedStyle(canvas).width.split('px')[0];
+  canvas.height = getComputedStyle(canvas).height.split('px')[0];
+  let ratio  = Math.min(canvas.width / img.width, canvas.height / img.height);
+  let x = (canvas.width - img.width * ratio) / 2;
+  let y = (canvas.height - img.height * ratio) / 2;
+  canvas.getContext('2d').filter="grayscale(50)";
+  canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+  canvas.getContext('2d').drawImage(img, 0, 0, img.width, img.height,
+      x, y, img.width * ratio, img.height * ratio);
+}
+
+override_getUserMedia()
+function get_cam()
+{
+    var video_cont = document.querySelector("#videoElement");
+    if (navigator.mediaDevices.getUserMedia) {
+    navigator.mediaDevices.getUserMedia({ video: true })
+        .then(function (stream) {
+        video_cont.srcObject = stream;
+        })
+        .catch(function (err0r) {
+        console.log("Something went wrong!" + err0r);
+        });
+    }
+}
+</script>
+<style>
+#container {
+    margin: 0px auto;
+    width: 500px;
+    height: 375px;
+    border: 10px #333 solid;
+}
+#videoElement {
+    width: 500px;
+    height: 375px;
+    background-color: #666;
+}
+#canvas
+{
+    display: none;
+    width: 500px;
+    height: 375px;
+    background-color: #666;
+
+}
+
+</style>
+</head>
+ 
+<body id="body">
+<div id="container">
+	<video autoplay="true" id="videoElement">
+	
+	</video>
+</div>
+
+<div>
+    <button onclick="get_cam()" >Click to stream video!</button>
+</div>
+</body>
+<footer>test</footer>
+</html>
