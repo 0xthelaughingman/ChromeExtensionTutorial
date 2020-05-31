@@ -1,0 +1,26 @@
+
+VIDEO : 
+
+{"audio":false,"video":{"deviceId":{"exact":"5fd9d13e6718e6eaa79e8eea3a41a52daaa6e580dc9c6f760d0372d9da6020a2"},"advanced":[{"frameRate":{"min":24}},{"height":{"min":720}},{"width":{"min":1280}},{"frameRate":{"max":24}},{"width":{"max":1280}},{"height":{"max":720}},{"aspectRatio":{"exact":1.7777777777777777}}]}}
+
+
+AUDIO :
+
+
+'{"audio":{"mandatory":{"sourceId":"default"},"optional":[{"googEchoCancellation":true},{"googEchoCancellation2":true},{"googAutoGainControl":true},{"googNoiseSuppression":true},{"googHighpassFilter":true},{"googAudioMirroring":true}]},"video":false}'
+
+
+
+
+JSONobj.video.advanced
+[
+  { frameRate: { min: 24 } },
+  { height: { min: 720 } },
+  { width: { min: 1280 } },
+  { frameRate: { max: 24 } },
+  { width: { max: 1280 } },
+  { height: { max: 720 } },
+  { aspectRatio: { exact: 1.7777777777777777 } }
+]
+
+obj.video.advanced[0].frameRate.min

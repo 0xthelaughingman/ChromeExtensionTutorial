@@ -31,6 +31,11 @@ make use of the model and it's output.
     * Way too high RAM and GPU usage... might need optimizations? Maybe try out cloud interactions via 
     Firebase deployment...
 
+7. Demo Google Meet: Try out the progress so far with the grayscale filter on Google Meet. Using the extension TamperMonkey, the javascript code can be tested without waiting for an actual extension.
+    * Handle the constraints properly when overriding getUserMedia API.
+    * Known Issue: The video stream gets stuck if the tab is changed, the audio remains consistent. The videotrack gets into an
+    invalid state. Must investigate/fix.
+
 
 
  
