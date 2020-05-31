@@ -35,6 +35,7 @@ make use of the model and it's output.
     * Handle the constraints properly when overriding getUserMedia API.
     * Known Issue: The video stream gets stuck if the tab is changed, the audio remains consistent. The videotrack gets into an
     invalid state. Must investigate/fix.
+    * Make the hidden canvas dimensions dynamic as well, based on the video stream resolution.
 
 
 
