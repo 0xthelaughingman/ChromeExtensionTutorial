@@ -26,7 +26,7 @@ for getting the frames for the Canvas, animating the frames together to form a '
 6. BodyPix: Trying out the Tensorflow.js - BodyPix. Slight changes to how we handle the stream and the rendering in order to be able to
 make use of the model and it's output.
     * Using a secondary canvas to first generate an image from the frame and feed into the model.
-    * Writing the model's output onto the primary panel.
+    * Writing the model's output onto the primary canvas.
     * This is done to avoid irregular animations between modified and unmodified states if using the same canvas...
     * Way too high RAM and GPU usage... might need optimizations? Maybe try out cloud interactions via 
     Firebase deployment...
