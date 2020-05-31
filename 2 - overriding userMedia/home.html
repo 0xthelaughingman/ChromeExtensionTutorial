@@ -4,22 +4,7 @@
 <meta charset="utf-8">
 <title>Display Webcam Stream</title>
 <script>
-/*
-function get_cam()
-{   
-    var video_cont = document.querySelector("#videoElement");
 
-    if (navigator.mediaDevices.getUserMedia) {
-    navigator.mediaDevices.getUserMedia({ video: true })
-        .then(function (stream) {
-        video_cont.srcObject = stream;
-        })
-        .catch(function (err0r) {
-        console.log("Something went wrong!" + err0r);
-        });
-    }
-}
-*/
 function override_getUserMedia()
 {
     let originalMediaDevicesGetUserMedia = navigator.mediaDevices.getUserMedia;
