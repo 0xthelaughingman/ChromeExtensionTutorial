@@ -43,7 +43,7 @@ function add_dynamic_elements(constraints)
         Check constraints.txt for sample JSON.
     */
 
-    invisible_canvas = document.createElement('CANVAS');
+    var invisible_canvas = document.createElement('CANVAS');
     invisible_canvas.id = "invisible";
     invisible_canvas.height = constraints.video.advanced[1].height.min;
     invisible_canvas.width = constraints.video.advanced[2].width.min;
@@ -57,7 +57,7 @@ function add_dynamic_elements(constraints)
     */
 
     //  Div that keeps the content out of the viewport, disables overflow so no scrollbars!
-    wrap_div = document.createElement("div");
+    var wrap_div = document.createElement("div");
     wrap_div.id = "wrap_div";
     wrap_div.style.position= "relative";
     wrap_div.style.right = "0";
@@ -106,7 +106,7 @@ function get_canvas_stream(stream, constraints)
     
     if(constraints.video)
     {   
-        console.log("ORIG STREAM META:" , JSON.stringify(stream.getVideoTracks()[0].getCapabilities()))
+        console.log("ORIG VIDEO META:" , JSON.stringify(stream.getVideoTracks()[0].getCapabilities()))
         //  Change the video stream and if needed, add Audio to the new stream
         
         if(first_add)
@@ -117,7 +117,7 @@ function get_canvas_stream(stream, constraints)
         stream_new = canvas.captureStream(24);
 
         //  log new stream's constraints
-        console.log("NEW STREAM META:" , JSON.stringify(stream_new.getVideoTracks()[0].getCapabilities()))
+        console.log("NEW VIDEO META:" , JSON.stringify(stream_new.getVideoTracks()[0].getCapabilities()))
         if(constraints.audio)
         {
             stream_new.addTrack(stream.getAudioTracks()[0]);
@@ -199,7 +199,7 @@ override_getUserMedia()
 
 function get_cam()
 {   var audio_constraints = {"audio":{"mandatory":{"sourceId":"default"},"optional":[{"googEchoCancellation":true},{"googEchoCancellation2":true},{"googAutoGainControl":true},{"googNoiseSuppression":true},{"googHighpassFilter":true},{"googAudioMirroring":true}]},"video":false}
-    var vid_constraints = {"audio":true,"video":{"advanced":[{"frameRate":{"min":24}},{"height":{"min":720}},{"width":{"min":1280}},{"frameRate":{"max":24}},{"width":{"max":1280}},{"height":{"max":720}},{"aspectRatio":{"exact":1.7777777777777777}}]}}
+    var vid_constraints = {"audio":false,"video":{"advanced":[{"frameRate":{"min":24}},{"height":{"min":720}},{"width":{"min":1280}},{"frameRate":{"max":24}},{"width":{"max":1280}},{"height":{"max":720}},{"aspectRatio":{"exact":1.7777777777777777}}]}}
     var video_cont = document.querySelector("#videoElement");
     if (navigator.mediaDevices.getUserMedia) {
     navigator.mediaDevices.getUserMedia(vid_constraints)
