@@ -31,10 +31,12 @@ make use of the model and it's output.
     * Way too high RAM and GPU usage... might need optimizations? Maybe try out cloud interactions via 
     Firebase deployment...
 
-7. Demo Google Meet: Try out the progress so far with the grayscale filter on Google Meet. Using the extension TamperMonkey, the javascript code can be tested without waiting for an actual extension.
+7. Demo Google Meet: Try out the progress so far with the grayscale filter on Google Meet. Using the extension TamperMonkey, the javascript code can be tested without waiting for an actual extension. [Copy paste the contents of the script tag into the new script's function defn on TamperMonkey. Enable the script and load up a google meet! :D]
     * Handle the constraints properly when overriding getUserMedia API.
     * Known Issue: The video stream gets stuck if the tab is changed, the audio remains consistent. The videotrack gets into an
     invalid state. Must investigate/fix.
+        [FIXED] This was due to the requestAnimationFrame() callback timer being suspended in those cases. 
+        Solution: Use a timer that bypasses the suspension/halt. In this case, a Timer based on AudioContext.
     * Make the hidden canvas dimensions dynamic as well, based on the video stream resolution.
 
 
