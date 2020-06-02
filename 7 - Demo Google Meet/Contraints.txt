@@ -1,15 +1,12 @@
-
+Google Meet:
 VIDEO : 
-
 {"audio":false,"video":{"deviceId":{"exact":"5fd9d13e6718e6eaa79e8eea3a41a52daaa6e580dc9c6f760d0372d9da6020a2"},"advanced":[{"frameRate":{"min":24}},{"height":{"min":720}},{"width":{"min":1280}},{"frameRate":{"max":24}},{"width":{"max":1280}},{"height":{"max":720}},{"aspectRatio":{"exact":1.7777777777777777}}]}}
 
-
 AUDIO :
-
-
 '{"audio":{"mandatory":{"sourceId":"default"},"optional":[{"googEchoCancellation":true},{"googEchoCancellation2":true},{"googAutoGainControl":true},{"googNoiseSuppression":true},{"googHighpassFilter":true},{"googAudioMirroring":true}]},"video":false}'
 
-
+CAMERA:
+ORIG VIDEO META: {"aspectRatio":{"max":1280,"min":0.001388888888888889},"deviceId":"5fd9d13e6718e6eaa79e8eea3a41a52daaa6e580dc9c6f760d0372d9da6020a2","facingMode":["user"],"frameRate":{"max":30,"min":0},"groupId":"eebbe0d68c3973a29982cb87a94f5c0340db12d156d01d294bc160ba65f82b95","height":{"max":720,"min":1},"resizeMode":["none","crop-and-scale"],"width":{"max":1280,"min":1}}
 
 
 JSONobj.video.advanced
@@ -24,3 +21,29 @@ JSONobj.video.advanced
 ]
 
 obj.video.advanced[0].frameRate.min
+
+
+
+Constraints for screenshare:
+Original Constraints:
+ {"audio":false,"video":{"mandatory":{"maxWidth":1536,"maxHeight":864,"chromeMediaSource":"desktop","chromeMediaSourceId":"ZmrvpB1WRfsD6iLP+TbBWg=="},"optional":[{"maxFrameRate":5},{"minFrameRate":5},{"googTemporalLayeredScreencast":true}]}}
+
+
+
+ SLACK CONTRAINTS (in order of the fallbacks):
+ Original Constraints:
+ 1
+ {"video":{"deviceId":{"exact":"5daaae83b029f9c31b229ff9b6a895ad6cc0587aea697c6d05975d8717f24a1b"},"width":{"exact":854},"height":{"exact":480}}}
+
+ 2.
+ Original Constraints:
+ {"video":{"deviceId":{"exact":"5daaae83b029f9c31b229ff9b6a895ad6cc0587aea697c6d05975d8717f24a1b"},"width":{"min":800},"height":{"max":480}}}
+
+ 3.
+ Original Constraints:
+ {"video":{"deviceId":{"exact":"5daaae83b029f9c31b229ff9b6a895ad6cc0587aea697c6d05975d8717f24a1b"},"height":{"min":480}}}
+
+
+ 4.
+ Original Constraints:
+ {"video":{"deviceId":{"exact":"5daaae83b029f9c31b229ff9b6a895ad6cc0587aea697c6d05975d8717f24a1b"}}}

@@ -90,8 +90,14 @@ function add_dynamic_elements(constraints)
     
 }
 
-var test_div = document.createElement("div");
-test_div.innerHTML="TEST";
+function remove_dynamic_elements()
+{
+    var dyn = document.getElementById("wrap_div")
+    if(dyn)
+    {
+        document.body.removeChild(dyn)
+    }
+}
 
 function override_getUserMedia()
 {
@@ -99,7 +105,6 @@ function override_getUserMedia()
 
     navigator.mediaDevices.getUserMedia = function getUserMedia(constraints) { 
     return new Promise((resolve, reject) => {
-        console.log("Taking over the implementation!")
         console.log("Original Constraints:\n" , JSON.stringify(constraints))
         originalMediaDevicesGetUserMedia.bind(navigator.mediaDevices)(constraints)
         .then(stream => resolve(get_canvas_stream(stream, constraints)))    //  this is where we'd divert the stream to a call that modifies it, before resolving the promise
@@ -112,18 +117,16 @@ function get_canvas_stream(stream, constraints)
     //  set original_stream
     original_stream = stream;
     
-    document.body.appendChild(test_div);
     var stream_new;
     
     if(constraints.video)
     {   //  log original Video stream's constraints
         console.log("ORIG VIDEO META:" , JSON.stringify(stream.getVideoTracks()[0].getCapabilities()))
         //  Change the video stream and if needed, add Audio to the new stream
-        
-        if(first_add)
-        {
-            add_dynamic_elements(constraints)
-        }
+
+        remove_dynamic_elements()
+        add_dynamic_elements(constraints)
+
         var canvas = document.getElementById("invisible");
         stream_new = canvas.captureStream(24);
 
@@ -166,6 +169,7 @@ function nextFrame() {
         console.log("Video Stopped by App")
         original_stream.getVideoTracks()[0].stop()
         video_on = false;
+        remove_dynamic_elements()
         return
     }
 
