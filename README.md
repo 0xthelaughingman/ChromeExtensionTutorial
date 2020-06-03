@@ -7,7 +7,7 @@ Each folder represents an incremental stage in the tutorial towards achieving ou
 
 
 
-# The Stages
+# Step 1 - Overriding getUserMedia
 
 1. userMedia: Deals with accessing the device's camera feed through the browser's getUserMedia API.
 
@@ -39,7 +39,7 @@ make use of the model and it's output.
         Solution: Use a timer that bypasses the suspension/halt. In this case, a Timer based on AudioContext.
     * Make the hidden canvas dimensions dynamic as well, based on the video stream resolution.
 
-Chrome-Extension:
+# Step 2 - Chrome-Extension:
     * we have a manifest file from which we are loading our script.
     * if user has our extension installed, it will load our script to takeOver the camera.
 
