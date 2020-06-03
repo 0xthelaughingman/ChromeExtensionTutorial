@@ -8,6 +8,7 @@
 //  Globals for state variables
 var imageCapture;
 var original_stream;
+var orig_vid_stream;
 var canvas_stream;
 var net ;
 var first_add = true;
@@ -116,11 +117,21 @@ function get_canvas_stream(stream, constraints)
 {   
     //  set original_stream
     original_stream = stream;
-    
     var stream_new;
+
     
     if(constraints.video)
-    {   //  log original Video stream's constraints
+    {   
+        //  Check if it's a screen share!
+        if( JSON.stringify(constraints).indexOf("chromeMediaSource") > -1 ) {
+            console.log("Returning Screenshare");
+            return stream
+        }
+        
+        orig_vid_stream = stream
+        
+        
+        //  log original Video stream's constraints
         console.log("ORIG VIDEO META:" , JSON.stringify(stream.getVideoTracks()[0].getCapabilities()))
         //  Change the video stream and if needed, add Audio to the new stream
 
@@ -136,22 +147,23 @@ function get_canvas_stream(stream, constraints)
         if(constraints.audio)
         {
             stream_new.addTrack(stream.getAudioTracks()[0]);
-            console.log("NEW AUDIO META:" , JSON.stringify(stream_new.getAudioTracks()[0].getCapabilities()))
+            console.log("AUDIO META:" , JSON.stringify(stream_new.getAudioTracks()[0].getCapabilities()))
         }
         canvas_stream = stream_new
         video_on = true;
         audioTimerLoop(nextFrame, 60)
+        return stream_new
     }
     else if (constraints.audio)
     {   
         //  only audio, just let the original stream be as is.
         console.log("Audio Only")
-        stream_new = stream
-        console.log("NEW AUDIO META:" , JSON.stringify(stream_new.getAudioTracks()[0].getCapabilities()))
-    }
+        console.log("AUDIO META:" , JSON.stringify(stream.getAudioTracks()[0].getCapabilities()))
+        return stream
 
-    //  feed the stream from the canvas
-    return stream_new;
+    }
+    console.log("Default return")
+    return stream;
 }
 
 
@@ -167,13 +179,13 @@ function nextFrame() {
     if(canvas_track.readyState != 'live')
     {
         console.log("Video Stopped by App")
-        original_stream.getVideoTracks()[0].stop()
+        orig_vid_stream.getVideoTracks()[0].stop()
         video_on = false;
         remove_dynamic_elements()
         return
     }
 
-    var track = original_stream.getVideoTracks()[0];
+    var track = orig_vid_stream.getVideoTracks()[0];
     imageCapture = new ImageCapture(track);
 
     if ((imageCapture.track.readyState == 'live' ))
@@ -264,7 +276,7 @@ function audioTimerLoop(callback, frequency) {
         if (!video_on) {    //  user broke the loop
             osc.onended = function() {
             aCtx.close();   //  clear the audioContext
-            console.log("Exiting Timer loop")
+            console.log("Exiting Timer loop", video_on)
             return;
             };
         }
@@ -276,7 +288,7 @@ function audioTimerLoop(callback, frequency) {
 
 function get_cam()
 {   var audio_constraints = {"audio":{"mandatory":{"sourceId":"default"},"optional":[{"googEchoCancellation":true},{"googEchoCancellation2":true},{"googAutoGainControl":true},{"googNoiseSuppression":true},{"googHighpassFilter":true},{"googAudioMirroring":true}]},"video":false}
-    var vid_constraints = {"audio":false,"video":{"advanced":[{"frameRate":{"min":24}},{"height":{"min":720}},{"width":{"min":1280}},{"frameRate":{"max":24}},{"width":{"max":1280}},{"height":{"max":720}},{"aspectRatio":{"exact":1.7777777777777777}}]}}
+    var vid_constraints = {"audio":true,"video":{"advanced":[{"frameRate":{"min":24}},{"height":{"min":720}},{"width":{"min":1280}},{"frameRate":{"max":24}},{"width":{"max":1280}},{"height":{"max":720}},{"aspectRatio":{"exact":1.7777777777777777}}]}}
     var video_cont = document.querySelector("#videoElement");
     if (navigator.mediaDevices.getUserMedia) {
     navigator.mediaDevices.getUserMedia(vid_constraints)
