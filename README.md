@@ -39,6 +39,10 @@ make use of the model and it's output.
         Solution: Use a timer that bypasses the suspension/halt. In this case, a Timer based on AudioContext.
     * Make the hidden canvas dimensions dynamic as well, based on the video stream resolution.
 
+Chrome-Extension:
+we have a manifest file from which we are loading our script.
+if user has our extension installed, it will load our script to takeOver the camera.
+
 
 
  
