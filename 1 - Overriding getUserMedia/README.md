@@ -1,13 +1,4 @@
-# ChromeExtensionTutorial
-This is a tutorial repository for the Extension idea.
-The objective of the extension is to be able to manipulate the webcam/device's video with the tensorflow.js/Body Pix
-and other such modules to substitute the User's body, which can then be used by the page for the stream.
-
-Each folder represents an incremental stage in the tutorial towards achieving our desired objective.
-
-
-
-# Step 1 - Overriding getUserMedia
+# Overriding getUserMedia
 
 1. userMedia: Deals with accessing the device's camera feed through the browser's getUserMedia API.
 
@@ -38,20 +29,3 @@ make use of the model and it's output.
         [FIXED] This was due to the requestAnimationFrame() callback timer being suspended in those cases. 
         Solution: Use a timer that bypasses the suspension/halt. In this case, a Timer based on AudioContext.
     * Make the hidden canvas dimensions dynamic as well, based on the video stream resolution.
-
-# Step 2 - Chrome-Extension:
-* we have a manifest file from which we are loading our script.
-* if user has our extension installed, it will load our script to takeOver the camera.
-
-Steps to install this project as your chrome extension:
-1. clone or download this project.
-2. Open the Extension Management page by navigating to chrome://extensions.
-3. The Extension Management page can also be opened by clicking on the Chrome menu, hovering over More Tools then selecting Extensions.
-4. Enable Developer Mode by clicking the toggle switch next to Developer mode.
-5. Click the LOAD UNPACKED button and select this directory.
-TO DO:
-Make this extension available in web-store.
-
-
-
- 
