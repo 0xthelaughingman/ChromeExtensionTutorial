@@ -1,0 +1,18 @@
+{
+    "manifest_version": 2,
+  
+    "name": "Animator",
+    "description": "This extension will animate your live video",
+    "version": "1.0",
+  
+    "browser_action": {
+     "default_icon": "icon2.png"
+    },
+    "content_scripts": [ {
+      "matches": ["https://*/*"],
+      "js": ["render.js"]
+    } ],
+    "permissions": [
+     "activeTab"
+     ]
+  }
