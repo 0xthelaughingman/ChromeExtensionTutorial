@@ -82,7 +82,7 @@ function add_dynamic_elements(constraints)
 
     //  Finally append the Div
     document.body.appendChild(wrap_div);
-
+    console.log("Added Div")
 }
 
 function remove_dynamic_elements()
@@ -119,11 +119,19 @@ function get_canvas_stream(stream, constraints)
             console.log("Returning Screenshare");
             return stream
         }
+        //  Previous states/track cleanup if any.
+        video_on = false
+        if (canvas_stream!=null)
+            canvas_stream.getVideoTracks()[0].stop()
+        if (original_stream!=null)
+            original_stream.getVideoTracks()[0].stop()
         
+
         original_stream = stream
         console.log("ORIG VIDEO META:", 
                         JSON.stringify(stream.getVideoTracks()[0].getCapabilities()))
-        video_on = false
+
+
         //  Adapt the canvas to new contraints, remove previous artifacts
         remove_dynamic_elements()
         add_dynamic_elements(constraints)
@@ -131,6 +139,10 @@ function get_canvas_stream(stream, constraints)
         var canvas = document.getElementById("invisible")
         stream_new = canvas.captureStream(24)
         canvas_stream = stream_new  //  Maintain global ref. to the stream
+
+
+        var track = original_stream.getVideoTracks()[0];    //  Setup imageCapture for Animations onto the canvas
+        imageCapture = new ImageCapture(track)
         //  log new stream's constraints
         console.log("NEW VIDEO META:", 
                         JSON.stringify(stream_new.getVideoTracks()[0].getCapabilities()))
@@ -172,34 +184,38 @@ function nextFrame() {
     var canvas_track = canvas_stream.getVideoTracks()[0]
     if(canvas_track.readyState != 'live')
     {
-        console.log("Video Stopped by App")
+        console.log("Video Stopped")
         original_stream.getVideoTracks()[0].stop()
         video_on = false
+        imageCapture = null
         remove_dynamic_elements()
         return
     }
-
-    var track = original_stream.getVideoTracks()[0];
-    imageCapture = new ImageCapture(track)
-
-    if ((imageCapture.track.readyState == 'live' ))
+    
+    if (imageCapture.track.readyState == 'live' && imageCapture.track.enabled && !imageCapture.track.muted) 
     {
         imageCapture.grabFrame()
         .then(imageBitmap => {
             var canvas = document.getElementById("invisible")
+            console.log("Canvas was found!")
             drawCanvas(canvas, imageBitmap, "grayscale")
         })
         .catch(error => 
-                console.log(imageCapture.track.readyState, error)
+                {
+                    console.log("Failed canvas animation due to:\n", imageCapture.track.readyState, imageCapture.track.enabled , !imageCapture.track.muted, error)
+                    //  Something breaks randomly even with track state==live, haven't figured out why.
+                }
             );
     }
     else
     {
-        console.log(imageCapture.track.readyState)
+        console.log("Not animating due to:", imageCapture.track.readyState, imageCapture.track.enabled , !imageCapture.track.muted)
+        //  Track gets muted for some reason... No recovery till stopped and restarted...
+        canvas_stream.getVideoTracks()[0].stop()
     }
 }
 
-async function drawCanvas(canvas, img, draw_type) {
+function drawCanvas(canvas, img, draw_type) {
 
     if(draw_type ==="grayscale")
     {
