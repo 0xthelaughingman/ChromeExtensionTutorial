@@ -50,10 +50,10 @@ function add_dynamic_elements(constraints)
 
     var invisible_canvas = document.createElement('CANVAS')
     invisible_canvas.id = "invisible"
-    invisible_canvas.height = constraints.video.advanced[1].height.min
-    invisible_canvas.width = constraints.video.advanced[2].width.min
+    invisible_canvas.height = constraints.height.max
+    invisible_canvas.width = constraints.width.max
     invisible_canvas.style.position= "absolute"
-    invisible_canvas.style.right = -constraints.video.advanced[2].width.min
+    invisible_canvas.style.right = -constraints.width.max
 
     draw_canvas_height = invisible_canvas.height
     draw_canvas_width = invisible_canvas.width
@@ -100,7 +100,7 @@ function override_getUserMedia()
 
     navigator.mediaDevices.getUserMedia = function getUserMedia(constraints) { 
     return new Promise((resolve, reject) => {
-        console.log("Original Constraints:\n" , JSON.stringify(constraints))
+        console.log("Original Requested Constraints:\n" , JSON.stringify(constraints))
         originalMediaDevicesGetUserMedia.bind(navigator.mediaDevices)(constraints)
         .then(stream => resolve(get_canvas_stream(stream, constraints)))    //  this is where we'd divert the stream to a call that modifies it, before resolving the promise
         .catch(reject)
@@ -128,13 +128,13 @@ function get_canvas_stream(stream, constraints)
         
 
         original_stream = stream
-        console.log("ORIG VIDEO META:", 
-                        JSON.stringify(stream.getVideoTracks()[0].getCapabilities()))
+        var original_constraints = stream.getVideoTracks()[0].getCapabilities()
+        console.log("ORIG VIDEO META:", JSON.stringify(original_constraints))
 
 
         //  Adapt the canvas to new contraints, remove previous artifacts
         remove_dynamic_elements()
-        add_dynamic_elements(constraints)
+        add_dynamic_elements(original_constraints)
 
         var canvas = document.getElementById("invisible")
         stream_new = canvas.captureStream(24)
@@ -171,8 +171,10 @@ function get_canvas_stream(stream, constraints)
     return stream;
 }
 
-
-//  FrameLooper
+/*
+    Root function for drawing each frame, passed as callback to the AudioTimer.
+    Not using requestAnimationFrame() callback as that gets suspended on tab switch/minimize, can't have that on a live video stream.
+*/
 function nextFrame() {
     /*
         Since we have 2 streams running, and only the canvas stream goes to the app... Only the canvas stream
@@ -215,6 +217,11 @@ function nextFrame() {
     }
 }
 
+/*
+    Base function for standard 2D filters.
+    The drawtype should ideally be fetched from extension config, controlled/edited by the user.
+    Should be switchable on the fly!
+*/
 function drawCanvas(canvas, img, draw_type) {
 
     if(draw_type ==="grayscale")
@@ -223,7 +230,11 @@ function drawCanvas(canvas, img, draw_type) {
     }
 }
 
-function draw_image(canvas, img)
+/*
+    TODO: Base function for TFJS based draws.
+    Should handle BodyPix variations (Overlay/Pixels) and Pose-Animator.
+*/
+function tensor_draws(canvas, img)
 {
     canvas.getContext('2d').drawImage(img, 0, 0)
 }
