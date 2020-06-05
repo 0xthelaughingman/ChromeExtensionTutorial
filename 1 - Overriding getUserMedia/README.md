@@ -29,3 +29,8 @@ make use of the model and it's output.
         [FIXED] This was due to the requestAnimationFrame() callback timer being suspended in those cases. 
         Solution: Use a timer that bypasses the suspension/halt. In this case, a Timer based on AudioContext.
     * Make the hidden canvas dimensions dynamic as well, based on the video stream resolution.
+
+8. Enhancements & Handling: Major improvements to how we were handling the stream constraints. Code works fine for Video Screenshare, Audio and Cam Video. Minor testing on Slack was successful.
+    * Init'ing the hidden canvas from the Cam Stream's constraints instead of the App's requested constraints.
+    The failure to meet constraints doesn't seem to be fatal and this approach avoids handling each app's JSON formats.
+    * Still random freezes at times. Added a crap ton of state control and cleanup, can't figure out why. Only way out of the freeze is to keep toggling Cam on/off till it ends up working again...
