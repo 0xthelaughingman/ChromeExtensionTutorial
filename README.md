@@ -46,7 +46,7 @@ make use of the model and it's output.
     * [UPDATE] Switched to using an intermediate video element before the final draw canvas. Using get_canvas_stream_beta function that supports the 2D filters as well as TFJS based renders, as well as a new
     nextVideoFrame() render root function to make use of the Video element.
       * Added global constraints to be used in case of TFJS renders (state var draw_type), ideal is tfjs_240p.
-    * [ISSUE] Meets/Hangouts do seem to need their dimension constraints met, otherwise the video is smaller and in a corner, Slack still works without an issue... Will switch to using a regex like (link) to eval height/widths from any given JSON, if it fails for either of the two then default to device cam's resolution.
+    * [ISSUE] Only Meets does seem to need their dimension constraints met, otherwise the video is smaller and in a corner, Slack/Hangouts still work without an issue... Will switch to using a regex like (link) to eval height/widths from any given JSON, if it fails for either of the two then default to device cam's resolution.
     https://regex101.com/r/BDwrGc/1
 
     
