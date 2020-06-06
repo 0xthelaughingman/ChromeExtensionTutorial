@@ -281,7 +281,7 @@ function nextFrame() {
         imageCapture.grabFrame()
         .then(imageBitmap => {
             var canvas = document.getElementById("invisible")
-            console.log("Canvas was found!")
+            //console.log("Canvas was found!")
             drawCanvas(canvas, imageBitmap, "grayscale")
         })
         .catch(error => 
@@ -314,7 +314,7 @@ function nextVideoFrame() {
         console.log("Video Stopped")
         original_stream.getVideoTracks()[0].stop()
         video_on = false
-        video.stop()
+        //video.stop()
         remove_dynamic_elements()
         return
     }
