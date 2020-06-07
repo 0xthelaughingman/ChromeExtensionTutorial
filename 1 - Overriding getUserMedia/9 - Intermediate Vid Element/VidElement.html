@@ -12,9 +12,9 @@ var canvas_stream
 var net 
 var tfjs_draw_counter=0
 var video_on = false
-var draw_type = "tfjs-pixel" //  This should have a function defined that's called in get_canvas_stream that reads from the Extension's persistent data,
-                            //  which the user updates/selects.
-                            //  Current supported values : "grayscale", "tfjs-pixel"
+var draw_type = "tfjs-pixel"    //  This should have a function defined that's called in get_canvas_stream that reads from the Extension's persistent data,
+                                //  which the user updates/selects.
+                                //  Current supported values : "grayscale", "tfjs-pixel"
 
 //  dimension constraint globals for TFJS rendering
 var tfjs_720p = {"height":{"max":720,"min":1}, "width":{"max":1280,"min":1}}
@@ -46,7 +46,7 @@ function loadScripts(scripts){
 
 loadScripts(scripts);
 
-function add_dynamic_elements(constraints)
+function add_dynamic_elements(constraints, fallback_constraints)
 {
     /*  
         Primary canvas that serves as the source of the modified stream which is passed onto the getUserMedia API.
@@ -150,9 +150,9 @@ function get_canvas_stream_beta(stream, constraints)
             tfjs_draw_counter=0
            } 
         else
-            new_constraints = original_constraints
+            new_constraints = constraints
 
-        add_dynamic_elements(new_constraints)
+        add_dynamic_elements(new_constraints, original_constraints)
 
         var video = document.getElementById("invisible_video")
 
