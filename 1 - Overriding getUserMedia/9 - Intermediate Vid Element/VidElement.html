@@ -12,15 +12,16 @@ var canvas_stream
 var net 
 var tfjs_draw_counter=0
 var video_on = false
-var draw_type = "grayscale"    //  This should have a function defined that's called in get_canvas_stream that reads from the Extension's persistent data,
+var draw_type = "tfjs-pixel"    //  This should have a function defined that's called in get_canvas_stream that reads from the Extension's persistent data,
                                 //  which the user updates/selects.
-                                //  Current supported values : "grayscale", "tfjs-pixel"
+                                //  Current supported values : "grayscale", "tfjs-pixel", "blur", "sepia"
 
 //  dimension constraint globals for TFJS rendering
 var tfjs_720p = {"height":{"max":720,"min":1}, "width":{"max":1280,"min":1}}
 var tfjs_360p = {"height":{"max":360,"min":1}, "width":{"max":480,"min":1}}
 var tfjs_240p = {"height":{"max":240,"min":1}, "width":{"max":352,"min":1}}
 
+var limit_tfjs = tfjs_240p
 
 var scripts = [
         'https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.2',
@@ -94,18 +95,6 @@ function add_dynamic_elements(constraints, fallback_constraints)
     invisible_canvas.style.position= "absolute"
     invisible_canvas.style.right = -dims[0]
 
-    /*  
-        A secondary canvas/video needed to render the image that goes into the TFJS module. We can't use the first canvas as that is the 
-        one that generates the stream.
-        Resolution needs to be what the User's device supports.
-    */
-    var invisible_video = document.createElement('video')
-    invisible_video.id = "invisible_video"
-    invisible_video.height = dims[1]
-    invisible_video.width = dims[0]
-    invisible_video.style.position= "absolute"
-    invisible_video.style.right = (2 * dims[0])
-
     //  Div that keeps the content out of the viewport, disables overflow so no scrollbars!
     var wrap_div = document.createElement("div")
     wrap_div.id = "wrap_div"
@@ -114,14 +103,46 @@ function add_dynamic_elements(constraints, fallback_constraints)
     wrap_div.style.bottom = "0px"
     wrap_div.style.width= "0"
     wrap_div.style.height= "0"
-    //wrap_div.style.overflow= "hidden"
+    wrap_div.style.overflow= "hidden"
+
+    /*  
+        A VideoElement needed to render the imageFrames that goes into the TFJS module. We can't use the first canvas as that is the 
+        one that generates the stream.
+        Resolution needs to be what the User's device supports.
+        Using it for all cases as drawing from VideoElement is far more stable than grabFrame() from stream directly.
+    */
+    var invisible_video = document.createElement('video')
+    invisible_video.id = "invisible_video"
+    invisible_video.height = dims[1]
+    invisible_video.width = dims[0]
+    invisible_video.style.position= "absolute"
+    invisible_video.style.right = (2 * dims[0])
+
+    //  If TFJS renders, Limit Video to tfjs supported constraints
+    //  We will upscale from the extra canvas here before returning to primary canvas
+    if(draw_type==="tfjs-pixel")
+    {
+        invisible_video.height = limit_tfjs.height.max
+        invisible_video.width = limit_tfjs.width.max
+        invisible_video.style.right = (2 * limit_tfjs.width.max)
+
+        // Add a tertiary canvas which draws the capped res img, use it as feed onto primary canvas
+        var tfjs_feed = document.createElement('CANVAS')
+        tfjs_feed.id = "tfjs_feed"
+        tfjs_feed.height = limit_tfjs.height.max
+        tfjs_feed.width = limit_tfjs.width.max
+        tfjs_feed.style.position= "absolute"
+        tfjs_feed.style.right = (4 * limit_tfjs.width.max)
+        wrap_div.appendChild(tfjs_feed)
+    }
+    
 
     //  Append all dynamics to the Div
-    wrap_div.appendChild(invisible_canvas);
-    wrap_div.appendChild(invisible_video);
+    wrap_div.appendChild(invisible_canvas)
+    wrap_div.appendChild(invisible_video)
 
     //  Finally append the Div
-    document.body.appendChild(wrap_div);
+    document.body.appendChild(wrap_div)
     console.log("Added Div")
 }
 
@@ -166,7 +187,6 @@ function get_canvas_stream_beta(stream, constraints)
             canvas_stream.getVideoTracks()[0].stop()
         if (original_stream!=null)
             original_stream.getVideoTracks()[0].stop()
-        
 
         original_stream = stream
         var original_constraints = stream.getVideoTracks()[0].getCapabilities()
@@ -176,16 +196,8 @@ function get_canvas_stream_beta(stream, constraints)
         //  Adapt the canvas to new contraints, remove previous artifacts
         remove_dynamic_elements()
 
-        var new_constraints;
-        if (draw_type==="tfjs-pixel")
-           {
-            new_constraints = tfjs_240p
-            tfjs_draw_counter=0
-           } 
-        else
-            new_constraints = constraints
-
-        add_dynamic_elements(new_constraints, original_constraints)
+        tfjs_draw_counter = 0
+        add_dynamic_elements(constraints, original_constraints)
 
         var video = document.getElementById("invisible_video")
 
@@ -268,11 +280,26 @@ function drawCanvas(canvas, img, draw_type) {
             canvas.getContext('2d').filter="grayscale(50)"
             canvas.getContext('2d').drawImage(img, 0, 0)
             break
-        
+
+        case "blur":
+            canvas.getContext('2d').filter="blur(40px)"
+            canvas.getContext('2d').drawImage(img, 0, 0)
+            break
+
+        case "sepia":
+            canvas.getContext('2d').filter="sepia(50)"
+            canvas.getContext('2d').drawImage(img, 0, 0)
+            break
+
         case "tfjs-pixel":
             console.log("drawing tfjs" , tfjs_draw_counter)
             tfjs_draw_counter++
-            tensor_draw_pixel(canvas, img)
+            //  Draw first to feed canvas
+            var feed = document.getElementById("tfjs_feed")
+            tensor_draw_pixel(feed, img)
+
+            //  Scale and draw to primary canvas
+            scale_draw(canvas, feed)
             break
     }
 }
@@ -310,6 +337,14 @@ async function tensor_draw_pixel(canvas, img)
     }
 }
 
+function scale_draw(canvas, img)
+{
+    let ratio  = Math.min(canvas.width / img.width, canvas.height / img.height);
+    let x = (canvas.width - img.width * ratio) / 2;
+    let y = (canvas.height - img.height * ratio) / 2;
+    canvas.getContext('2d').drawImage(img, 0, 0, img.width, img.height,
+        x, y, img.width * ratio, img.height * ratio);
+}
 
 
 override_getUserMedia()
