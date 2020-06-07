@@ -43,11 +43,13 @@ make use of the model and it's output.
     * Init'ing the hidden canvas from the Cam Stream's constraints instead of the App's requested constraints.
     The failure to meet constraints doesn't seem to be fatal and this approach avoids handling each app's JSON formats.
     * Still random freezes at times. Added a crap ton of state control and cleanup, can't figure out why. Only way out of the freeze is to keep toggling Cam on/off till it ends up working again...
+9. Intermediate Vid Element
     * [UPDATE] Switched to using an intermediate video element before the final draw canvas. Using get_canvas_stream_beta function that supports the 2D filters as well as TFJS based renders, as well as a new
     nextVideoFrame() render root function to make use of the Video element.
-      * Added global constraints to be used in case of TFJS renders (state var draw_type), ideal is tfjs_240p.
-    * [ISSUE] Only Meets does seem to need their dimension constraints met, otherwise the video is smaller and in a corner, Slack/Hangouts still work without an issue... Will switch to using a regex like (link) to eval height/widths from any given JSON, if it fails for either of the two then default to device cam's resolution.
+      * Added global constraints to be used in case of TFJS renders (global draw_type="tfjs-pixel"), ideal is tfjs_240p.
+    * [ISSUE#1] Only Meets does seem to need their dimension constraints met, otherwise the video is smaller and in a corner, Slack/Hangouts still work without an issue... Will switch to using a regex like (link) to eval height/widths from any given JSON, if it fails for either of the two then default to device cam's resolution.
     https://regex101.com/r/BDwrGc/1
+    * [ISSUE#2] The tfjs-pixel draw-mode tends to randomly halt on the render loop, with no visible/logged exception. The Video Element still continues playback.
 
     
 
