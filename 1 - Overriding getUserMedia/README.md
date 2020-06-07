@@ -39,5 +39,6 @@ make use of the model and it's output.
     nextVideoFrame() render root function to make use of the Video element.
       * Added global constraints to be used in case of TFJS renders (global draw_type="tfjs-pixel"), ideal is tfjs_240p.
     * [ISSUE#1] Only Meets does seem to need their dimension constraints met, otherwise the video is smaller and in a corner, Slack/Hangouts still work without an issue... Will switch to using a regex like (link) to eval height/widths from any given JSON, if it fails for either of the two then default to device cam's resolution.
-    https://regex101.com/r/BDwrGc/1
+    https://regex101.com/r/BDwrGc/
+      * [FIXED] Using utils_json_res() to handle dynamic constraints.
     * [ISSUE#2] The tfjs-pixel draw-mode tends to randomly halt on the render loop, with no visible/logged exception. The Video Element still continues playback.
