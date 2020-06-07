@@ -12,7 +12,7 @@ var canvas_stream
 var net 
 var tfjs_draw_counter=0
 var video_on = false
-var draw_type = "tfjs-pixel"    //  This should have a function defined that's called in get_canvas_stream that reads from the Extension's persistent data,
+var draw_type = "grayscale"    //  This should have a function defined that's called in get_canvas_stream that reads from the Extension's persistent data,
                                 //  which the user updates/selects.
                                 //  Current supported values : "grayscale", "tfjs-pixel"
 
@@ -46,6 +46,38 @@ function loadScripts(scripts){
 
 loadScripts(scripts);
 
+function utils_json_res(constraints, fallback_constraints)
+{
+    try{
+    var width_patt = /width\"*:\{*[(\"max\")|(\"min\")|(\"exact\")]*:*(\d+)/g
+    var height_patt = /height\"*:\{*[(\"max\")|(\"min\")|(\"exact\")]*:*(\d+)/g
+    var json_string = JSON.stringify(constraints)
+
+    var max_height=0
+    json_string.match(height_patt).forEach((element) => {
+	var res = parseInt(element.match(/(\d+)/g))
+	if (res>max_height)max_height=res	
+	});
+
+    var max_width=0
+    json_string.match(width_patt).forEach((element) => {
+	var res = parseInt(element.match(/(\d+)/g))
+	if (res>max_width)max_width=res	
+	});
+
+	console.log("Status by match ", max_width, max_height)
+    if(max_height==0 || max_width==0)
+    {
+        max_height = fallback_constraints.height.max
+        max_width = fallback_constraints.width.max
+    }
+    }
+    catch(error){ console.log("utils error", error)}
+
+    return [ max_width, max_height ]
+
+}
+
 function add_dynamic_elements(constraints, fallback_constraints)
 {
     /*  
@@ -53,13 +85,14 @@ function add_dynamic_elements(constraints, fallback_constraints)
         Resolution needs to be what the User's device supports.
         Check constraints.txt for sample JSON.
     */
-
+    var dims = utils_json_res(constraints, fallback_constraints)
+    console.log("Returned dims:", dims)
     var invisible_canvas = document.createElement('CANVAS')
     invisible_canvas.id = "invisible"
-    invisible_canvas.height = constraints.height.max
-    invisible_canvas.width = constraints.width.max
+    invisible_canvas.height = dims[1]
+    invisible_canvas.width = dims[0]
     invisible_canvas.style.position= "absolute"
-    invisible_canvas.style.right = -constraints.width.max
+    invisible_canvas.style.right = -dims[0]
 
     /*  
         A secondary canvas/video needed to render the image that goes into the TFJS module. We can't use the first canvas as that is the 
@@ -68,10 +101,10 @@ function add_dynamic_elements(constraints, fallback_constraints)
     */
     var invisible_video = document.createElement('video')
     invisible_video.id = "invisible_video"
-    invisible_video.height = constraints.height.max
-    invisible_video.width = constraints.width.max
+    invisible_video.height = dims[1]
+    invisible_video.width = dims[0]
     invisible_video.style.position= "absolute"
-    invisible_video.style.right = (2 * constraints.width.max)
+    invisible_video.style.right = (2 * dims[0])
 
     //  Div that keeps the content out of the viewport, disables overflow so no scrollbars!
     var wrap_div = document.createElement("div")
@@ -264,8 +297,6 @@ async function tensor_draw_pixel(canvas, img)
         const flipHorizontal = false;
         const maskBlurAmount = 0;
         // Draw the colored part image on top of the original image onto a canvas.
-        // The colored part image will be drawn semi-transparent, with an opacity of
-        // 0.7, allowing for the original image to be visible under.
         bodyPix.drawPixelatedMask(
             canvas, img, coloredPartImage, opacity, maskBlurAmount,
             flipHorizontal);
