@@ -28,7 +28,8 @@ var scripts = [
         'https://cdn.jsdelivr.net/npm/@tensorflow-models/body-pix@2.0',
     ];
 
-function loadScripts(scripts){
+function loadScripts(scripts)
+{
     var script = scripts.shift()
     var el = document.createElement('script')
     el.onload = function(script){
@@ -49,34 +50,39 @@ loadScripts(scripts);
 
 function utils_json_res(constraints, fallback_constraints)
 {
-    try{
     var width_patt = /width\"*:\{*[(\"max\")|(\"min\")|(\"exact\")]*:*(\d+)/g
     var height_patt = /height\"*:\{*[(\"max\")|(\"min\")|(\"exact\")]*:*(\d+)/g
     var json_string = JSON.stringify(constraints)
 
-    var max_height=0
-    json_string.match(height_patt).forEach((element) => {
-	var res = parseInt(element.match(/(\d+)/g))
-	if (res>max_height)max_height=res	
-	});
-
-    var max_width=0
-    json_string.match(width_patt).forEach((element) => {
-	var res = parseInt(element.match(/(\d+)/g))
-	if (res>max_width)max_width=res	
-	});
-
-	console.log("Status by match ", max_width, max_height)
-    if(max_height==0 || max_width==0)
+    try
     {
-        max_height = fallback_constraints.height.max
-        max_width = fallback_constraints.width.max
+        var max_height=0
+        json_string.match(height_patt).forEach((element) => {
+        var res = parseInt(element.match(/(\d+)/g))
+        if (res>max_height)
+            max_height=res	
+        });
+
+        var max_width=0
+        json_string.match(width_patt).forEach((element) => {
+        var res = parseInt(element.match(/(\d+)/g))
+        if (res>max_width)
+            max_width=res	
+        });
+
+        //  console.log("Status by match ", max_width, max_height)
+        if(max_height==0 || max_width==0)
+        {
+            max_height = fallback_constraints.height.max
+            max_width = fallback_constraints.width.max
+        }
     }
+    catch(error)
+    { 
+        console.log("utils error", error)
     }
-    catch(error){ console.log("utils error", error)}
 
     return [ max_width, max_height ]
-
 }
 
 function add_dynamic_elements(constraints, fallback_constraints)
@@ -136,7 +142,6 @@ function add_dynamic_elements(constraints, fallback_constraints)
         wrap_div.appendChild(tfjs_feed)
     }
     
-
     //  Append all dynamics to the Div
     wrap_div.appendChild(invisible_canvas)
     wrap_div.appendChild(invisible_video)
@@ -202,7 +207,7 @@ function get_canvas_stream_beta(stream, constraints)
         var video = document.getElementById("invisible_video")
 
         var canvas = document.getElementById("invisible")
-        stream_new = canvas.captureStream(24)
+        stream_new = canvas.captureStream(30)
         canvas_stream = stream_new  //  Maintain global ref. to the stream
 
         video.srcObject = stream
@@ -221,7 +226,7 @@ function get_canvas_stream_beta(stream, constraints)
 
         video_on = true; // audioTimer's loop condition.
         audioTimerLoop(nextVideoFrame, 60)
-        //nextVideoFrame()
+        //  nextVideoFrame()
         return stream_new
     }
     else if (constraints.audio)
@@ -244,7 +249,8 @@ function get_canvas_stream_beta(stream, constraints)
     Not using requestAnimationFrame() callback as that gets suspended on tab switch/minimize, can't have that on a live video stream.
 */
 
-function nextVideoFrame() {
+function nextVideoFrame()
+{
     /*
         Since we have 2 streams running, and only the canvas stream goes to the app... Only the canvas stream
         will have its' tracks' stop() called when we stop video on the app.
@@ -272,8 +278,8 @@ function nextVideoFrame() {
     The drawtype should ideally be fetched from extension config, controlled/edited by the user.
     Should be switchable on the fly!
 */
-function drawCanvas(canvas, img, draw_type) {
-
+function drawCanvas(canvas, img, draw_type) 
+{
     switch(draw_type)
     {
         case "grayscale":
@@ -349,7 +355,8 @@ function scale_draw(canvas, img)
 
 override_getUserMedia()
 
-async function loadPix(){
+async function loadPix()
+{
     //   net = await bodyPix.load();
     net = await bodyPix.load({
     architecture: 'MobileNetV1',
@@ -366,8 +373,8 @@ async function loadPix(){
     @arg callback : a callback function with the audioContext's currentTime passed as unique argument
     @arg frequency : float in ms;
 */
-function audioTimerLoop(callback, frequency) {
-
+function audioTimerLoop(callback, frequency) 
+{
     var freq = frequency/1000   //  AudioContext time parameters are in seconds
     var aCtx = new AudioContext()
     //  Chrome needs our oscillator node to be attached to the destination
@@ -384,7 +391,7 @@ function audioTimerLoop(callback, frequency) {
         osc.onended = onOSCend  //  so we can loop
         osc.connect(silence)
         osc.start(0)    //  start it now
-        //console.log("In Timer loop")
+        //  console.log("In Timer loop")
         osc.stop(aCtx.currentTime + freq)   //  stop it next frame
         callback(aCtx.currentTime)  //  one frame is done
 
@@ -396,7 +403,6 @@ function audioTimerLoop(callback, frequency) {
             };
         }
     };
-    
 }
 
 function get_cam()
