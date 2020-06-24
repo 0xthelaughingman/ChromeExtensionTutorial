@@ -35,10 +35,6 @@ let Animator = {
  */
 Animator.logging = true;
 
-
-
-var limit_tfjs = tfjs_240p
-
 var scripts = [
         'https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.2',
         'https://cdn.jsdelivr.net/npm/@tensorflow-models/body-pix@2.0',
@@ -144,17 +140,17 @@ function add_dynamic_elements(constraints, fallback_constraints)
     //  We will upscale from the extra canvas here before returning to primary canvas
     if(Animator.draw_type==="tfjs-pixel")
     {
-        invisible_video.height = limit_tfjs.height.max
-        invisible_video.width = limit_tfjs.width.max
-        invisible_video.style.right = (2 * limit_tfjs.width.max)
+        invisible_video.height = Animator.limit_tfjs.height.max
+        invisible_video.width = Animator.limit_tfjs.width.max
+        invisible_video.style.right = (2 * Animator.limit_tfjs.width.max)
 
         // Add a tertiary canvas which draws the capped res img, use it as feed onto primary canvas
         var tfjs_feed = document.createElement('CANVAS')
         tfjs_feed.id = "tfjs_feed"
-        tfjs_feed.height = limit_tfjs.height.max
-        tfjs_feed.width = limit_tfjs.width.max
+        tfjs_feed.height = Animator.limit_tfjs.height.max
+        tfjs_feed.width = Animator.limit_tfjs.width.max
         tfjs_feed.style.position= "absolute"
-        tfjs_feed.style.right = (4 * limit_tfjs.width.max)
+        tfjs_feed.style.right = (4 * Animator.limit_tfjs.width.max)
         wrap_div.appendChild(tfjs_feed)
     }
     
@@ -278,9 +274,9 @@ function nextVideoFrame()
 
     if(canvas_track.readyState != 'live')
     {
-        console.log("Video Stopped")
-        original_stream.getVideoTracks()[0].stop()
+        Animator.original_stream.getVideoTracks()[0].stop()
         Animator.video_on = false
+        console.log("Video Stopped")
         remove_dynamic_elements()
         return
     }
