@@ -39,7 +39,7 @@ let Animator = {
     net: null,
     tfjs_draw_counter: 0,
     video_on: false,
-    draw_type: "tfjs-pixel",    //  This should have a function defined that's called in get_canvas_stream that reads from the Extension's persistent data,
+    draw_type: "grayscale",    //  This should have a function defined that's called in get_canvas_stream that reads from the Extension's persistent data,
                                 //  which the user updates/selects.
                                 //  Current supported values : "grayscale", "tfjs-pixel", "blur", "sepia"
     limit_tfjs: tfjs_240p,
@@ -409,7 +409,7 @@ function audioTimerLoop(callback, frequency)
         if (!Animator.video_on) {    //  user broke the loop
             osc.onended = function() {
             aCtx.close();   //  clear the audioContext
-            console.log("Exiting Timer loop", video_on)
+            console.log("Exiting Timer loop", Animator.video_on)
             return
             };
         }

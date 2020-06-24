@@ -126,19 +126,19 @@ function add_dynamic_elements(constraints, fallback_constraints)
 
     //  If TFJS renders, Limit Video to tfjs supported constraints
     //  We will upscale from the extra canvas here before returning to primary canvas
-    if(draw_type==="tfjs-pixel")
+    if(Animator.draw_type==="tfjs-pixel")
     {
-        invisible_video.height = limit_tfjs.height.max
-        invisible_video.width = limit_tfjs.width.max
-        invisible_video.style.right = (2 * limit_tfjs.width.max)
+        invisible_video.height = Animator.limit_tfjs.height.max
+        invisible_video.width = Animator.limit_tfjs.width.max
+        invisible_video.style.right = (2 * Animator.limit_tfjs.width.max)
 
         // Add a tertiary canvas which draws the capped res img, use it as feed onto primary canvas
         var tfjs_feed = document.createElement('CANVAS')
         tfjs_feed.id = "tfjs_feed"
-        tfjs_feed.height = limit_tfjs.height.max
-        tfjs_feed.width = limit_tfjs.width.max
+        tfjs_feed.height = Animator.limit_tfjs.height.max
+        tfjs_feed.width = Animator.limit_tfjs.width.max
         tfjs_feed.style.position= "absolute"
-        tfjs_feed.style.right = (4 * limit_tfjs.width.max)
+        tfjs_feed.style.right = (4 * Animator.limit_tfjs.width.max)
         wrap_div.appendChild(tfjs_feed)
     }
     
@@ -163,7 +163,6 @@ function remove_dynamic_elements()
 function override_getUserMedia()
 {
     let originalMediaDevicesGetUserMedia = navigator.mediaDevices.getUserMedia;
-
     navigator.mediaDevices.getUserMedia = function getUserMedia(constraints) { 
     return new Promise((resolve, reject) => {
         console.log("Original Requested Constraints:\n" , JSON.stringify(constraints))
@@ -177,7 +176,6 @@ function override_getUserMedia()
 function get_canvas_stream_beta(stream, constraints)
 {   
     var stream_new;
-
     if(constraints.video)
     {   
         //  Check if it's a screen share!
@@ -187,13 +185,13 @@ function get_canvas_stream_beta(stream, constraints)
         }
 
         //  Previous states/track cleanup if any.
-        video_on = false
-        if (canvas_stream!=null)
-            canvas_stream.getVideoTracks()[0].stop()
-        if (original_stream!=null)
-            original_stream.getVideoTracks()[0].stop()
+        Animator.video_on = false
+        if (Animator.canvas_stream!=null)
+            Animator.canvas_stream.getVideoTracks()[0].stop()
+        if (Animator.original_stream!=null)
+            Animator.original_stream.getVideoTracks()[0].stop()
 
-        original_stream = stream
+        Animator.original_stream = stream
         var original_constraints = stream.getVideoTracks()[0].getCapabilities()
         console.log("ORIG VIDEO META:", JSON.stringify(original_constraints))
 
@@ -201,14 +199,14 @@ function get_canvas_stream_beta(stream, constraints)
         //  Adapt the canvas to new contraints, remove previous artifacts
         remove_dynamic_elements()
 
-        tfjs_draw_counter = 0
+        Animator.tfjs_draw_counter = 0
         add_dynamic_elements(constraints, original_constraints)
 
         var video = document.getElementById("invisible_video")
 
         var canvas = document.getElementById("invisible")
         stream_new = canvas.captureStream(30)
-        canvas_stream = stream_new  //  Maintain global ref. to the stream
+        Animator.canvas_stream = stream_new  //  Maintain global ref. to the stream
 
         video.srcObject = stream
         video.play()
@@ -223,8 +221,7 @@ function get_canvas_stream_beta(stream, constraints)
             console.log("AUDIO META:", 
                             JSON.stringify(stream_new.getAudioTracks()[0].getCapabilities()))
         }
-
-        video_on = true; // audioTimer's loop condition.
+        Animator.video_on = true; // audioTimer's loop condition.
         audioTimerLoop(nextVideoFrame, 60)
         //  nextVideoFrame()
         return stream_new
@@ -258,19 +255,19 @@ function nextVideoFrame()
         Otherwise the Camera will still remain active!
     */
     var video = document.getElementById("invisible_video")
-    var canvas_track = canvas_stream.getVideoTracks()[0]
+    var canvas_track = Animator.canvas_stream.getVideoTracks()[0]
 
     if(canvas_track.readyState != 'live')
     {
+        Animator.original_stream.getVideoTracks()[0].stop()
+        Animator.video_on = false
         console.log("Video Stopped")
-        original_stream.getVideoTracks()[0].stop()
-        video_on = false
         remove_dynamic_elements()
         return
     }
 
     var canvas = document.getElementById("invisible")
-    drawCanvas(canvas, video, draw_type)  
+    drawCanvas(canvas, video, Animator.draw_type)  
 }
 
 /*
@@ -298,8 +295,8 @@ function drawCanvas(canvas, img, draw_type)
             break
 
         case "tfjs-pixel":
-            console.log("drawing tfjs" , tfjs_draw_counter)
-            tfjs_draw_counter++
+            console.log("drawing tfjs" , Animator.tfjs_draw_counter)
+            Animator.tfjs_draw_counter++
             //  Draw first to feed canvas
             var feed = document.getElementById("tfjs_feed")
             tensor_draw_pixel(feed, img)
@@ -318,9 +315,9 @@ async function tensor_draw_pixel(canvas, img)
 {
     try
     {   
-        if (tfjs_draw_counter==300)
+        if (Animator.tfjs_draw_counter==300)
             throw ReferenceError
-        const partSegmentation = await net.segmentMultiPersonParts(img);
+        const partSegmentation = await Animator.net.segmentMultiPersonParts(img);
 
         // The colored part image is an rgb image with a corresponding color from the
         // rainbow colors for each part at each pixel, and black pixels where there is
@@ -336,7 +333,7 @@ async function tensor_draw_pixel(canvas, img)
     }
     catch(error)
     {   
-        tfjs_draw_counter  = 0
+        Animator.tfjs_draw_counter  = 0
         // Should be filling with a black/gray rect entirely, to keep User anonymous...
         console.log(error)
         canvas.getContext('2d').fillRect(0,0, canvas.width, canvas.height)
@@ -352,13 +349,12 @@ function scale_draw(canvas, img)
         x, y, img.width * ratio, img.height * ratio);
 }
 
-
 override_getUserMedia()
 
 async function loadPix()
 {
     //   net = await bodyPix.load();
-    net = await bodyPix.load({
+    Animator.net = await bodyPix.load({
     architecture: 'MobileNetV1',
     outputStride: 16,
     multiplier: 1,
@@ -366,6 +362,7 @@ async function loadPix()
     internalResolution: 'high'
     });
     console.log("Loaded BodyPix!")
+    
 }
 
 /*
@@ -395,10 +392,10 @@ function audioTimerLoop(callback, frequency)
         osc.stop(aCtx.currentTime + freq)   //  stop it next frame
         callback(aCtx.currentTime)  //  one frame is done
 
-        if (!video_on) {    //  user broke the loop
+        if (!Animator.video_on) {    //  user broke the loop
             osc.onended = function() {
             aCtx.close();   //  clear the audioContext
-            console.log("Exiting Timer loop", video_on)
+            console.log("Exiting Timer loop", Animator.video_on)
             return
             };
         }
