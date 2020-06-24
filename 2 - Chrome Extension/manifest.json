@@ -1,22 +1,29 @@
 {
   "manifest_version": 2,
 
-  "name": "Animator",
+  "name": "DogeCam",
   "description": "This extension will animate your live video",
-  "version": "1.0",
+  "version": "1.1",
 
   "browser_action": {
-    "default_icon": "icon2.png",
+    "default_icon": "Doge.png",
     "default_popup": "popup.html"
   },
 
   "content_scripts": [ 
     {
       "matches": ["https://*/*"],
-      "js": ["render.js"]
+      "js": ["body-pix.js", "tfjs.js", "render.js"],
+	  "run_at": "document_start"
     } 
   ],
+  
   "permissions": [
-    "activeTab"
-  ]
+    "activeTab",
+	"storage"
+  ],
+  
+  "background": {
+	"scripts":	["render.js"]
+  }
 }

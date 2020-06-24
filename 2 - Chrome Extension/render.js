@@ -1,266 +1,400 @@
-/**
- * global parameters.
- */
-let Animator = {
-    imageCapture: null,
-    originalStream: null,
-    canvasStream: null,
-    net: null,
-    isFirstAdd: true,
-    isVideoOn: false,
-    drawCanvasHeight: null,
-    drawCanvasWidth: null,
-    scripts: [
-        'https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.2',
-        'https://cdn.jsdelivr.net/npm/@tensorflow-models/body-pix@2.0',
-    ],
-    logging: false,
-    log: (message) => {
-        if(Animator.logging)
-            console.log('Animator:', message);
-    },  
-};
+var inject = '('+function() {
+	//  dimension constraint globals for TFJS rendering
+	var tfjs_720p = {"height":{"max":720,"min":1}, "width":{"max":1280,"min":1}}
+	var tfjs_360p = {"height":{"max":360,"min":1}, "width":{"max":480,"min":1}}
+	var tfjs_240p = {"height":{"max":240,"min":1}, "width":{"max":352,"min":1}}
 
-/**
- * enable the console logging.
- */
-Animator.logging = true;
+	console.log("IN RENDER.js")
+	/**
+	 * global parameters.
+	 */
+	let Animator = {
+		imageCapture: null,
+		original_stream: null,
+		canvas_stream: null,
+		net: null,
+		tfjs_draw_counter: 0,
+		video_on: false,
+		draw_type: "blur",    //  This should have a function defined that's called in get_canvas_stream that reads from the Extension's persistent data,
+									//  which the user updates/selects.
+									//  Current supported values : "grayscale", "tfjs-pixel", "blur", "sepia"
+		limit_tfjs: tfjs_240p,
+		logging: false,
+		log: (message) => {
+			if(Animator.logging)
+				console.log('Animator:', message);
+		},  
+	 }
 
-/**
- * Load all the scripts.
- */
-((scripts) => {
-    scripts.forEach(script => {
-        let el = document.createElement('script');
-        el.src = script;
-        document.head.appendChild(el);
-        Animator.log(script, 'loaded!');
-    });
-    Animator.log('loaded all scripts');
-})(Animator.scripts);
+	/**
+	 * enable the console logging.
+	 */
+	Animator.logging = true;
 
 
-function add_dynamic_elements(constraints) {
-    /*  
-        Primary canvas that serves as the source of the modified stream which is passed onto the getUserMedia API.
-        Resolution needs to be what the User's device supports.
-        Check constraints.txt for sample JSON.
-    */
+	function utils_json_res(constraints, fallback_constraints)
+	{
+		var width_patt = /width\"*:\{*[(\"max\")|(\"min\")|(\"exact\")]*:*(\d+)/g
+		var height_patt = /height\"*:\{*[(\"max\")|(\"min\")|(\"exact\")]*:*(\d+)/g
+		var json_string = JSON.stringify(constraints)
 
-    var invisible_canvas = document.createElement('CANVAS');
-    invisible_canvas.id = "invisible";
-    invisible_canvas.height = constraints.video.advanced[1].height.min;
-    invisible_canvas.width = constraints.video.advanced[2].width.min;
-    invisible_canvas.style.position= "absolute";
-    invisible_canvas.style.right = -constraints.video.advanced[2].width.min;
+		try
+		{
+			var max_height=0
+			json_string.match(height_patt).forEach((element) => {
+			var res = parseInt(element.match(/(\d+)/g))
+			if (res>max_height)
+				max_height=res	
+			});
 
-    Animator.drawCanvasHeight = invisible_canvas.height;
-    Animator.drawCanvasWidth = invisible_canvas.width;
+			var max_width=0
+			json_string.match(width_patt).forEach((element) => {
+			var res = parseInt(element.match(/(\d+)/g))
+			if (res>max_width)
+				max_width=res	
+			});
 
-    /*  
-        A secondary canvas needed to render the image that goes into the TFJS module. We can't use the first canvas as that is the 
-        one that generates the stream.
-        Resolution needs to be what the User's device supports.
-    */
-    //  Add code for the seconday canvas here
+			//  console.log("Status by match ", max_width, max_height)
+			if(max_height==0 || max_width==0)
+			{
+				max_height = fallback_constraints.height.max
+				max_width = fallback_constraints.width.max
+			}
+		}
+		catch(error)
+		{ 
+			console.log("utils error", error)
+		}
 
-    //  Div that keeps the content out of the viewport, disables overflow so no scrollbars!
-    var wrap_div = document.createElement("div");
-    wrap_div.id = "wrap_div";
-    wrap_div.style.position= "relative";
-    wrap_div.style.right = "0";
-    wrap_div.style.bottom = "0px";
-    wrap_div.style.width= "0";
-    wrap_div.style.height= "0";
-    wrap_div.style.overflow= "hidden";
+		return [ max_width, max_height ]
+	}
 
-    //  Append all dynamics to the Div
-    wrap_div.appendChild(invisible_canvas);
-    
-    //  Finally append the Div
-    document.body.appendChild(wrap_div);
-    Animator.isFirstAdd = false  
-}
+	function add_dynamic_elements(constraints, fallback_constraints)
+	{
+		/*  
+			Primary canvas that serves as the source of the modified stream which is passed onto the getUserMedia API.
+			Resolution needs to be what the User's device supports.
+			Check constraints.txt for sample JSON.
+		*/
+		var dims = utils_json_res(constraints, fallback_constraints)
+		console.log("Returned dims:", dims)
+		var invisible_canvas = document.createElement('CANVAS')
+		invisible_canvas.id = "invisible"
+		invisible_canvas.height = dims[1]
+		invisible_canvas.width = dims[0]
+		invisible_canvas.style.position= "absolute"
+		invisible_canvas.style.right = -dims[0]
 
-function remove_dynamic_elements() {
-    let dyn = document.getElementById("wrap_div");
-    if(dyn) {
-        document.body.removeChild(dyn);
-    }
-}
+		//  Div that keeps the content out of the viewport, disables overflow so no scrollbars!
+		var wrap_div = document.createElement("div")
+		wrap_div.id = "wrap_div"
+		wrap_div.style.position= "relative"
+		wrap_div.style.right = "0"
+		wrap_div.style.bottom = "0px"
+		wrap_div.style.width= "0"
+		wrap_div.style.height= "0"
+		wrap_div.style.overflow= "hidden"
 
-function get_canvas_stream(stream, constraints) {   
-    //  set original_stream
-    Animator.originalStream = stream;
-    
-    var stream_new;
-    
-    if(constraints.video) {
-        //  log original Video stream's constraints
-        Animator.log("ORIG VIDEO META:" , JSON.stringify(stream.getVideoTracks()[0].getCapabilities()));
-        //  Change the video stream and if needed, add Audio to the new stream
+		/*  
+			A VideoElement needed to render the imageFrames that goes into the TFJS module. We can't use the first canvas as that is the 
+			one that generates the stream.
+			Resolution needs to be what the User's device supports.
+			Using it for all cases as drawing from VideoElement is far more stable than grabFrame() from stream directly.
+		*/
+		var invisible_video = document.createElement('video')
+		invisible_video.id = "invisible_video"
+		invisible_video.height = dims[1]
+		invisible_video.width = dims[0]
+		invisible_video.style.position= "absolute"
+		invisible_video.style.right = (2 * dims[0])
 
-        remove_dynamic_elements();
-        add_dynamic_elements(constraints);
+		//  If TFJS renders, Limit Video to tfjs supported constraints
+		//  We will upscale from the extra canvas here before returning to primary canvas
+		if(Animator.draw_type==="tfjs-pixel")
+		{
+			invisible_video.height = limit_tfjs.height.max
+			invisible_video.width = limit_tfjs.width.max
+			invisible_video.style.right = (2 * limit_tfjs.width.max)
 
-        var canvas = document.getElementById("invisible");
-        stream_new = canvas.captureStream(24);
+			// Add a tertiary canvas which draws the capped res img, use it as feed onto primary canvas
+			var tfjs_feed = document.createElement('CANVAS')
+			tfjs_feed.id = "tfjs_feed"
+			tfjs_feed.height = limit_tfjs.height.max
+			tfjs_feed.width = limit_tfjs.width.max
+			tfjs_feed.style.position= "absolute"
+			tfjs_feed.style.right = (4 * limit_tfjs.width.max)
+			wrap_div.appendChild(tfjs_feed)
+		}
+		
+		//  Append all dynamics to the Div
+		wrap_div.appendChild(invisible_canvas)
+		wrap_div.appendChild(invisible_video)
 
-        //  log new stream's constraints
-        Animator.log("NEW VIDEO META:" , JSON.stringify(stream_new.getVideoTracks()[0].getCapabilities()));
+		//  Finally append the Div
+		document.body.appendChild(wrap_div)
+		console.log("Added Div")
+	}
 
-        if(constraints.audio) {
-            stream_new.addTrack(stream.getAudioTracks()[0]);
-            Animator.log("NEW AUDIO META:" , JSON.stringify(stream_new.getAudioTracks()[0].getCapabilities()));
-        }
-        Animator.canvasStream = stream_new;
-        Animator.isVideoOn = true;
-        audioTimerLoop(nextFrame, 60);
-    } else if (constraints.audio) {   
-        //  only audio, just let the original stream be as is.
-        Animator.log("Audio Only");
-        stream_new = stream;
-        Animator.log("NEW AUDIO META:" , JSON.stringify(stream_new.getAudioTracks()[0].getCapabilities()));
-    }
+	function remove_dynamic_elements()
+	{
+		var dyn = document.getElementById("wrap_div")
+		if(dyn)
+		{
+			document.body.removeChild(dyn)
+		}
+	}
 
-    //  feed the stream from the canvas
-    return stream_new;
-}
+	function override_getUserMedia()
+	{
+		console.log("Overriding")
+		loadPix()
+		let originalMediaDevicesGetUserMedia = navigator.mediaDevices.getUserMedia;
 
+		navigator.mediaDevices.getUserMedia = function getUserMedia(constraints) { 
+		return new Promise((resolve, reject) => {
+			console.log("Original Requested Constraints:\n" , JSON.stringify(constraints))
+			originalMediaDevicesGetUserMedia.bind(navigator.mediaDevices)(constraints)
+			.then(stream => resolve(get_canvas_stream_beta(stream, constraints)))    //  this is where we'd divert the stream to a call that modifies it, before resolving the promise
+			.catch(reject)
+		});
+		}
+	}
 
-//  FrameLooper
-function nextFrame() {
-    /*
-        Since we have 2 streams running, and only the canvas stream goes to the app... Only the canvas stream
-        will have its' tracks' stop() called when we stop video on the app.
-        We have to call the original stream's stop on the video track manually! 
-        Otherwise the Camera will still remain active!
-    */
-    var canvas_track = Animator.canvasStream.getVideoTracks()[0];
-    if(canvas_track.readyState != 'live') {
-        Animator.log("Video Stopped by App");
-        Animator.originalStream.getVideoTracks()[0].stop();
-        Animator.isVideoOn = false;
-        remove_dynamic_elements();
-        return;
-    }
+	function get_canvas_stream_beta(stream, constraints)
+	{   
+		var stream_new;
+		console.log("in stream handover")
+		if(constraints.video)
+		{   
+			//  Check if it's a screen share!
+			if( JSON.stringify(constraints).indexOf("chromeMediaSource") > -1 ) {
+				console.log("Returning Screenshare");
+				return stream
+			}
 
-    var track = Animator.originalStream.getVideoTracks()[0];
-    Animator.imageCapture = new ImageCapture(track);
+			//  Previous states/track cleanup if any.
+			Animator.video_on = false
+			if (Animator.canvas_stream!=null)
+				Animator.canvas_stream.getVideoTracks()[0].stop()
+			if (Animator.original_stream!=null)
+				Animator.original_stream.getVideoTracks()[0].stop()
 
-    if ((Animator.imageCapture.track.readyState == 'live' )) {
-        Animator.imageCapture.grabFrame().then(imageBitmap => {
-            var canvas = document.getElementById("invisible");
-            drawCanvas(canvas, imageBitmap, "grayscale");
-        }).catch(error => {
-            console.log(error);
-        });
-    } else {
-        Animator.log(Animator.imageCapture.track.readyState);
-    }
-}
-
-
-async function drawCanvas(canvas, img, draw_type) {
-    if(draw_type ==="grayscale") {
-        draw_grayscale(canvas,img);
-    }
-}
-
-
-function draw_image(canvas, img) {
-    canvas.getContext('2d').drawImage(img, 0, 0);
-}
-
-
-function draw_grayscale(canvas,img) {
-    canvas.getContext('2d').filter="grayscale(50)";   
-    //  canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
-    canvas.getContext('2d').drawImage(img, 0, 0);
-}
-
-
-async function loadPix(){
-    //   net = await bodyPix.load();
-    Animator.net = await bodyPix.load({
-        architecture: 'MobileNetV1',
-        outputStride: 16,
-        multiplier: 0.75,
-        quantBytes: 2
-    });
-
-    Animator.log("Loaded BodyPix!");
-}
-
-/*
-    An alternative timing loop, based on AudioContext's clock
-
-    @arg callback : a callback function 
-        with the audioContext's currentTime passed as unique argument
-    @arg frequency : float in ms;
-*/
-function audioTimerLoop(callback, frequency) {
-
-    var freq = frequency / 1000;        //  AudioContext time parameters are in seconds
-    var aCtx = new AudioContext();
-    //  Chrome needs our oscillator node to be attached to the destination
-    //  So we create a silent Gain Node
-    var silence = aCtx.createGain();
-    silence.gain.value = 0;
-    silence.connect(aCtx.destination);
-
-    onOSCend();
-
-    function onOSCend() {
-        var osc = aCtx.createOscillator();
-        osc.onended = onOSCend;     //  so we can loop
-        osc.connect(silence);
-        osc.start(0);   //  start it now
-        osc.stop(aCtx.currentTime + freq);  //  stop it next frame
-        callback(aCtx.currentTime); //  one frame is done
-
-        if (!Animator.isVideoOn) {    //  user broke the loop
-            osc.onended = () => {
-                aCtx.close();   //  clear the audioContext
-                Animator.log("Exiting Timer loop");
-                return;
-            };
-        }    
-    };  
-}
-
-function get_cam() {
-    var audio_constraints = {"audio":{"mandatory":{"sourceId":"default"},"optional":[{"googEchoCancellation":true},{"googEchoCancellation2":true},{"googAutoGainControl":true},{"googNoiseSuppression":true},{"googHighpassFilter":true},{"googAudioMirroring":true}]},"video":false};
-    var vid_constraints = {"audio":false,"video":{"advanced":[{"frameRate":{"min":24}},{"height":{"min":720}},{"width":{"min":1280}},{"frameRate":{"max":24}},{"width":{"max":1280}},{"height":{"max":720}},{"aspectRatio":{"exact":1.7777777777777777}}]}};
-    var video_cont = document.querySelector("#videoElement");
-    if (navigator.mediaDevices.getUserMedia) {
-        navigator.mediaDevices.getUserMedia(vid_constraints).then((stream) => {
-            video_cont.srcObject = stream;
-        }).catch((err) => {
-            console.log("Something went wrong!" , err.message);
-        });
-    }
-}
+			Animator.original_stream = stream
+			var original_constraints = stream.getVideoTracks()[0].getCapabilities()
+			console.log("ORIG VIDEO META:", JSON.stringify(original_constraints))
 
 
-function override_getUserMedia() {
-    Animator.log("Overriding")
-    let originalMediaDevicesGetUserMedia = navigator.mediaDevices.getUserMedia;
+			//  Adapt the canvas to new contraints, remove previous artifacts
+			remove_dynamic_elements()
 
-    navigator.mediaDevices.getUserMedia = (constraints) => { 
-        return new Promise((resolve, reject) => {
-            Animator.log("Original Constraints:\n" , JSON.stringify(constraints));
-            originalMediaDevicesGetUserMedia.bind(
-                navigator.mediaDevices
-            )(constraints).then(stream => {
-                resolve(get_canvas_stream(stream, constraints))
-            }).catch(err => {
-                reject(err);
-            });
-        });
-    }
-}
+			Animator.tfjs_draw_counter = 0
+			add_dynamic_elements(constraints, original_constraints)
+
+			var video = document.getElementById("invisible_video")
+
+			var canvas = document.getElementById("invisible")
+			stream_new = canvas.captureStream(30)
+			Animator.canvas_stream = stream_new  //  Maintain global ref. to the stream
+
+			video.srcObject = stream
+			video.play()
+
+			//  log new stream's constraints
+			console.log("NEW VIDEO META:", 
+							JSON.stringify(stream_new.getVideoTracks()[0].getCapabilities()))
+
+			if(constraints.audio)
+			{
+				stream_new.addTrack(stream.getAudioTracks()[0]);
+				console.log("AUDIO META:", 
+								JSON.stringify(stream_new.getAudioTracks()[0].getCapabilities()))
+			}
+			Animator.video_on = true; // audioTimer's loop condition.
+			audioTimerLoop(nextVideoFrame, 60)
+			//  nextVideoFrame()
+			return stream_new
+		}
+		else if (constraints.audio)
+		{   
+			//  only audio, just let the original stream be as is.
+			console.log("Audio Only")
+			console.log("AUDIO META:", 
+							JSON.stringify(stream.getAudioTracks()[0].getCapabilities()))
+			return stream
+		}
+
+		console.log("Default return")
+		return stream;
+	}
 
 
-Animator.log("Calling Override");
-override_getUserMedia();
+
+	/*
+		Root function for drawing each frame, passed as callback to the AudioTimer.
+		Not using requestAnimationFrame() callback as that gets suspended on tab switch/minimize, can't have that on a live video stream.
+	*/
+
+	function nextVideoFrame()
+	{
+		/*
+			Since we have 2 streams running, and only the canvas stream goes to the app... Only the canvas stream
+			will have its' tracks' stop() called when we stop video on the app.
+			We have to call the original stream's stop on the video track manually! 
+			Otherwise the Camera will still remain active!
+		*/
+		var video = document.getElementById("invisible_video")
+		var canvas_track = Animator.canvas_stream.getVideoTracks()[0]
+
+		if(canvas_track.readyState != 'live')
+		{
+			console.log("Video Stopped")
+			original_stream.getVideoTracks()[0].stop()
+			Animator.video_on = false
+			remove_dynamic_elements()
+			return
+		}
+
+		var canvas = document.getElementById("invisible")
+		drawCanvas(canvas, video, Animator.draw_type)  
+	}
+
+	/*
+		Base function for standard 2D filters.
+		The drawtype should ideally be fetched from extension config, controlled/edited by the user.
+		Should be switchable on the fly!
+	*/
+	function drawCanvas(canvas, img, draw_type) 
+	{
+		switch(draw_type)
+		{
+			case "grayscale":
+				canvas.getContext('2d').filter="grayscale(50)"
+				canvas.getContext('2d').drawImage(img, 0, 0)
+				break
+
+			case "blur":
+				canvas.getContext('2d').filter="blur(40px)"
+				canvas.getContext('2d').drawImage(img, 0, 0)
+				break
+
+			case "sepia":
+				canvas.getContext('2d').filter="sepia(50)"
+				canvas.getContext('2d').drawImage(img, 0, 0)
+				break
+
+			case "tfjs-pixel":
+				console.log("drawing tfjs" , Animator.tfjs_draw_counter)
+				Animator.tfjs_draw_counter++
+				//  Draw first to feed canvas
+				var feed = document.getElementById("tfjs_feed")
+				tensor_draw_pixel(feed, img)
+
+				//  Scale and draw to primary canvas
+				scale_draw(canvas, feed)
+				break
+		}
+	}
+
+	/*
+		TODO: Base function for TFJS based draws.
+		Should handle BodyPix variations (Overlay/Pixels) and Pose-Animator.
+	*/
+	async function tensor_draw_pixel(canvas, img)
+	{
+		try
+		{   
+			if (Animator.tfjs_draw_counter==300)
+				throw ReferenceError
+			const partSegmentation = await Animator.net.segmentMultiPersonParts(img);
+
+			// The colored part image is an rgb image with a corresponding color from the
+			// rainbow colors for each part at each pixel, and black pixels where there is
+			// no part.
+			const coloredPartImage = bodyPix.toColoredPartMask(partSegmentation);
+			const opacity = 1;
+			const flipHorizontal = false;
+			const maskBlurAmount = 0;
+			// Draw the colored part image on top of the original image onto a canvas.
+			bodyPix.drawPixelatedMask(
+				canvas, img, coloredPartImage, opacity, maskBlurAmount,
+				flipHorizontal);
+		}
+		catch(error)
+		{   
+			Animator.tfjs_draw_counter  = 0
+			// Should be filling with a black/gray rect entirely, to keep User anonymous...
+			console.log(error)
+			canvas.getContext('2d').fillRect(0,0, canvas.width, canvas.height)
+		}
+	}
+
+	function scale_draw(canvas, img)
+	{
+		let ratio  = Math.min(canvas.width / img.width, canvas.height / img.height);
+		let x = (canvas.width - img.width * ratio) / 2;
+		let y = (canvas.height - img.height * ratio) / 2;
+		canvas.getContext('2d').drawImage(img, 0, 0, img.width, img.height,
+			x, y, img.width * ratio, img.height * ratio);
+	}
+
+
+	override_getUserMedia()
+
+	async function loadPix()
+	{
+		//   net = await bodyPix.load();
+		Animator.net = await bodyPix.load({
+		architecture: 'MobileNetV1',
+		outputStride: 16,
+		multiplier: 1,
+		quantBytes: 2,
+		internalResolution: 'high'
+		});
+		console.log("Loaded BodyPix!")
+	}
+
+	/*
+		An alternative timing loop, based on AudioContext's clock
+		@arg callback : a callback function with the audioContext's currentTime passed as unique argument
+		@arg frequency : float in ms;
+	*/
+	function audioTimerLoop(callback, frequency) 
+	{
+		var freq = frequency/1000   //  AudioContext time parameters are in seconds
+		var aCtx = new AudioContext()
+		//  Chrome needs our oscillator node to be attached to the destination
+		//  So we create a silent Gain Node
+		var silence = aCtx.createGain()
+		silence.gain.value = 0
+		silence.connect(aCtx.destination)
+
+		onOSCend();
+
+		function onOSCend() 
+		{
+			var osc = aCtx.createOscillator()
+			osc.onended = onOSCend  //  so we can loop
+			osc.connect(silence)
+			osc.start(0)    //  start it now
+			//  console.log("In Timer loop")
+			osc.stop(aCtx.currentTime + freq)   //  stop it next frame
+			callback(aCtx.currentTime)  //  one frame is done
+
+			if (!Animator.video_on) {    //  user broke the loop
+				osc.onended = function() {
+				aCtx.close();   //  clear the audioContext
+				console.log("Exiting Timer loop", video_on)
+				return
+				};
+			}
+		};
+	}
+}+')();';
+document.addEventListener('DOMContentLoaded', function() {
+    var script = document.createElement('script');
+	
+    script.textContent = inject;
+    var parent = document.head || document.documentElement;
+    parent.insertBefore(script, parent.firstChild);
+    script.parentNode.removeChild(script);
+});
