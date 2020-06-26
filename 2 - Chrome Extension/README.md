@@ -14,6 +14,6 @@ Make this extension available in web-store.
 # Notes:
 
 * Persistent Storage & Reads: Since our combined.js is technically not a content script but an injected script, it doesn't have the exposure to chrome APIs.
- * To overcome that drawback, we pass the messages on update/onchange from the base.js(content script) to combined.js.
- * base.js and the popup have all the access to chrome APIs.
- * [TODO]: Update popup on-load with last saved config.
+  * To overcome that drawback, we pass the messages on update/onchange from the base.js(content script) to combined.js.
+  * base.js and the popup have all the access to chrome APIs.
+  * [TODO]: Update popup on-load with last saved config.
