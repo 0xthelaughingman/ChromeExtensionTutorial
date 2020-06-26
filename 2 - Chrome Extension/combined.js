@@ -28,7 +28,7 @@ var tfjs_720p = {"height":{"max":720,"min":1}, "width":{"max":1280,"min":1}}
 var tfjs_360p = {"height":{"max":360,"min":1}, "width":{"max":480,"min":1}}
 var tfjs_240p = {"height":{"max":240,"min":1}, "width":{"max":352,"min":1}}
 
-console.log("IN RENDER ALT.js")
+console.log("IN combined.js")
 /**
  * global parameters.
  */
@@ -39,8 +39,8 @@ let Animator = {
     net: null,
     tfjs_draw_counter: 0,
     video_on: false,
-    draw_type: "grayscale",    //  This should have a function defined that's called in get_canvas_stream that reads from the Extension's persistent data,
-                                //  which the user updates/selects.
+    draw_type: "grayscale",      //  This should have a function defined that's called in get_canvas_stream that reads from the Extension's persistent data,
+    draw_param: null,           //  which the user updates/selects.
                                 //  Current supported values : "grayscale", "tfjs-pixel", "blur", "sepia"
     limit_tfjs: tfjs_240p,
     logging: false,
@@ -54,6 +54,16 @@ let Animator = {
  * enable the console logging.
  */
 Animator.logging = true;
+
+/**
+ * Receive update event from base.js content script.
+ */
+document.addEventListener('config-update', function (data) {
+    console.log('received', data.detail);
+    Animator.draw_type = data.detail.draw_type
+    Animator.draw_param = data.detail.draw_param
+    resize_reset_update()
+});
 
 
 function utils_json_res(constraints, fallback_constraints)
@@ -139,16 +149,17 @@ function add_dynamic_elements(constraints, fallback_constraints)
         invisible_video.height = Animator.limit_tfjs.height.max
         invisible_video.width = Animator.limit_tfjs.width.max
         invisible_video.style.right = (2 * Animator.limit_tfjs.width.max)
-
-        // Add a tertiary canvas which draws the capped res img, use it as feed onto primary canvas
-        var tfjs_feed = document.createElement('CANVAS')
-        tfjs_feed.id = "tfjs_feed"
-        tfjs_feed.height = Animator.limit_tfjs.height.max
-        tfjs_feed.width = Animator.limit_tfjs.width.max
-        tfjs_feed.style.position= "absolute"
-        tfjs_feed.style.right = (4 * Animator.limit_tfjs.width.max)
-        wrap_div.appendChild(tfjs_feed)
     }
+
+    // TFJS only: Add a tertiary canvas which draws the capped res img, use it as feed onto primary canvas
+    // This might not be needed after all, the scaling seems to happen auto.
+    var tfjs_feed = document.createElement('CANVAS')
+    tfjs_feed.id = "tfjs_feed"
+    tfjs_feed.height = Animator.limit_tfjs.height.max
+    tfjs_feed.width = Animator.limit_tfjs.width.max
+    tfjs_feed.style.position= "absolute"
+    tfjs_feed.style.right = (4 * Animator.limit_tfjs.width.max)
+    wrap_div.appendChild(tfjs_feed)
     
     //  Append all dynamics to the Div
     wrap_div.appendChild(invisible_canvas)
@@ -158,6 +169,31 @@ function add_dynamic_elements(constraints, fallback_constraints)
     document.body.appendChild(wrap_div)
     console.log("Added Div")
 }
+
+function resize_reset_update()
+{
+    var primary_canvas = document.getElementById("invisible")
+    var vid =document.getElementById("invisible_video")
+
+    // Ensure resized for TFJS
+    if(Animator.draw_type==="tfjs-pixel")
+    {
+        vid.height = Animator.limit_tfjs.height.max
+        vid.width = Animator.limit_tfjs.width.max
+        vid.style.right = (2 * Animator.limit_tfjs.width.max)
+    }
+    else    //  Match primary canvas otherwise.
+    {
+        vid.height = primary_canvas.height
+        vid.width = primary_canvas.width
+        vid.style.right = (2 * primary_canvas.width)
+    }
+
+    //  Clear canvas and reset filters
+    primary_canvas.getContext('2d').filter='none'
+    primary_canvas.getContext('2d').fillRect(0,0, primary_canvas.width, primary_canvas.height)
+}
+
 
 function remove_dynamic_elements()
 {
@@ -291,7 +327,12 @@ function nextVideoFrame()
 function drawCanvas(canvas, img, draw_type) 
 {
     switch(draw_type)
-    {
+    {   
+        case "no-filter":
+            canvas.getContext('2d').filter="none"
+            canvas.getContext('2d').drawImage(img, 0, 0)
+            break
+
         case "grayscale":
             canvas.getContext('2d').filter="grayscale(50)"
             canvas.getContext('2d').drawImage(img, 0, 0)
