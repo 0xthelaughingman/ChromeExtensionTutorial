@@ -39,7 +39,7 @@ let Animator = {
     net: null,
     tfjs_draw_counter: 0,
     video_on: false,
-    draw_type: "grayscale",      //  This should have a function defined that's called in get_canvas_stream that reads from the Extension's persistent data,
+    draw_type: "grayscale",     //  This should have a function defined that's called in get_canvas_stream that reads from the Extension's persistent data,
     draw_param: null,           //  which the user updates/selects.
                                 //  Current supported values : "grayscale", "tfjs-pixel", "blur", "sepia"
     limit_tfjs: tfjs_240p,
@@ -48,7 +48,7 @@ let Animator = {
         if(Animator.logging)
             console.log('Animator:', message);
     },  
- }
+}
 
 /**
  * enable the console logging.
@@ -76,16 +76,16 @@ function utils_json_res(constraints, fallback_constraints)
     {
         var max_height=0
         json_string.match(height_patt).forEach((element) => {
-        var res = parseInt(element.match(/(\d+)/g))
-        if (res>max_height)
-            max_height=res	
+            var res = parseInt(element.match(/(\d+)/g))
+            if (res>max_height)
+                max_height=res	
         });
 
         var max_width=0
         json_string.match(width_patt).forEach((element) => {
-        var res = parseInt(element.match(/(\d+)/g))
-        if (res>max_width)
-            max_width=res	
+            var res = parseInt(element.match(/(\d+)/g))
+            if (res>max_width)
+                max_width=res	
         });
 
         //  console.log("Status by match ", max_width, max_height)
@@ -173,7 +173,7 @@ function add_dynamic_elements(constraints, fallback_constraints)
 function resize_reset_update()
 {
     var primary_canvas = document.getElementById("invisible")
-    var vid =document.getElementById("invisible_video")
+    var vid = document.getElementById("invisible_video")
 
     // Ensure resized for TFJS
     if(Animator.draw_type==="tfjs-pixel")
@@ -204,20 +204,42 @@ function remove_dynamic_elements()
     }
 }
 
+override_getUserMedia()
+
 function override_getUserMedia()
 {
     console.log("Overriding")
     let originalMediaDevicesGetUserMedia = navigator.mediaDevices.getUserMedia;
     console.log("can access navigator")
     navigator.mediaDevices.getUserMedia = function getUserMedia(constraints) { 
-    return new Promise((resolve, reject) => {
-        console.log("Original Requested Constraints:\n" , JSON.stringify(constraints))
-        originalMediaDevicesGetUserMedia.bind(navigator.mediaDevices)(constraints)
-        .then(stream => resolve(get_canvas_stream_beta(stream, constraints)))    //  this is where we'd divert the stream to a call that modifies it, before resolving the promise
-        .catch(reject)
-    });
+        return new Promise((resolve, reject) => {
+            console.log("Original Requested Constraints:\n" , JSON.stringify(constraints))
+            originalMediaDevicesGetUserMedia.bind(navigator.mediaDevices)(constraints)
+            .then(stream => resolve(get_canvas_stream_beta(stream, constraints)))    //  this is where we'd divert the stream to a call that modifies it, before resolving the promise
+            .catch(reject)
+        });
     }
     console.log("success override")
+}
+
+override_getUserMediaFallback()
+
+function override_getUserMediaFallback()
+{
+    console.log("overriding fallback")
+    let originalGetUserMedia = navigator.getUserMedia;
+    console.log("can access navigator")
+    if (navigator.getUserMedia)
+    {
+        navigator.getUserMedia = function getUserMedia(constraints, success, error) { new Promise(function (resolve, reject){
+            console.log("Original FALLBACK Requested Constraints:\n" , JSON.stringify(constraints))
+            originalGetUserMedia.bind(navigator)(constraints, function (stream) 
+            {   
+                return resolve(get_canvas_stream_beta(stream, constraints));
+            }, reject);}).then(success).catch(error);   
+        };  
+    }
+    console.log("success override fallback")
 }
 
 function get_canvas_stream_beta(stream, constraints)
@@ -404,7 +426,6 @@ function scale_draw(canvas, img)
 }
 
 loadPix()
-override_getUserMedia()
 
 async function loadPix()
 {
